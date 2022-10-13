@@ -1,0 +1,61 @@
+0.5.0
+
+    * Replace `std::io::Chars` with an internal implementation
+      based on http://bjoern.hoehrmann.de/utf-8/decoder/dfa/
+
+0.4.2
+
+    * Add `categories` to Cargo.toml
+
+0.4.1
+
+    * Remove `rustc_unicode` crate.
+
+0.4.0
+
+    * Added `Decoder::iter_mut`.
+    * Added `Send` and `Sync` constraints to `DecodeError::Other`
+      and `EncodeError::Other`.
+    * Fixed `FromJson` instance for slices.
+    * Replace `Encoder::writer` with `Encoder::writer_mut`.
+
+0.3.0
+
+    * Reworked the internals of `Encoder` and `Decoder` which
+      results in some API changes which are not backwards compatible:
+
+        - Removed `Decoder::array1` and `Decoder::object1`.
+        - `Decoder::array` and `Decoder::object` no longer use a
+          function parameter. Instead decoding arrays and objects
+          is done with the new `Decoder::has_more` method.
+        - Removed `Element`. Detecting the end of arrays and objects
+          is done with the new `Decoder::has_more` method.
+        - `ArrayIter` works for `FromJson` instances only.
+        - `ToJson` now takes the `Encoder` as `&mut` and returns
+          `EncodeResult<()>`.
+        - `Encoder` methods no longer consume `self`.
+        - `Encoder::array` and `Encoder::object` no longer use a
+          function parameter. Instead they need to be paired with the
+          newly added `Encoder::end` method.
+
+    * Simplified `object!`, `array!` and `extract!` macros. Lambda forms
+      have been removed. The expression argument can directly refer to
+      the decoder value in scope at call site.
+
+0.2.1
+
+    * Updated to `rustc 1.14.0-nightly (9c31d76e9 2016-10-03)`.
+    * Added `slice` method to `json::ast::Ref`.
+
+0.2.0
+
+    * Added `ToJson` and `FromJson` traits.
+    * Added `extract!` macro.
+
+0.1.1
+
+    * Improved `object!` macro.
+
+0.1.0
+
+    * Initial release.

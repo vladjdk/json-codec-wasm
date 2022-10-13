@@ -1,0 +1,18 @@
+[package]
+name          = "json-codec"
+version       = "0.5.0"
+authors       = ["Toralf Wittner <tw@dtex.org>"]
+license-file  = "LICENSE"
+readme        = "README.md"
+description   = "JSON Codec implementation"
+repository    = "https://gitlab.com/twittner/json-codec"
+documentation = "https://twittner.gitlab.io/json-codec/json/"
+keywords      = ["json", "encoding"]
+categories    = ["encoding"]
+
+[lib]
+name = "json"
+
+[dev-dependencies]
+quickcheck = ">= 0.2.21"
+
