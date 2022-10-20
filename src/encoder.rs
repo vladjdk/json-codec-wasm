@@ -36,7 +36,7 @@ use std::io::{self, Write};
 use std::str::Chars;
 
 use ast::Json;
-use stack::{Stack, Scope};
+use stack::{Scope, Stack};
 
 // ToJson trait /////////////////////////////////////////////////////////////
 
@@ -51,7 +51,7 @@ macro_rules! instance {
                 e.$name(*self)
             }
         }
-    }
+    };
 }
 
 instance!(bool);
@@ -66,6 +66,7 @@ instance!(i32);
 instance!(i64);
 instance!(isize);
 instance!(i128);
+instance!(u128);
 
 impl ToJson for str {
     fn encode<W: Write>(&self, e: &mut Encoder<W>) -> EncodeResult<()> {
@@ -118,7 +119,7 @@ impl<'a, T: ToJson> ToJson for &'a [T] {
 /// JSON encoder over any `Write`-type.
 pub struct Encoder<W> {
     writer: W,
-    stack: Stack
+    stack: Stack,
 }
 
 // Macros ///////////////////////////////////////////////////////////////////
@@ -140,12 +141,15 @@ macro_rules! number {
             self.writer.write_all(x.to_string().as_bytes())?;
             Ok(())
         }
-    }
+    };
 }
 
 impl<W: Write> Encoder<W> {
     pub fn new(w: W) -> Encoder<W> {
-        Encoder { writer: w, stack: Stack::new() }
+        Encoder {
+            writer: w,
+            stack: Stack::new(),
+        }
     }
 
     pub fn into_writer(self) -> W {
@@ -162,9 +166,10 @@ impl<W: Write> Encoder<W> {
 
     pub fn encode(&mut self, j: &Json) -> EncodeResult<()> {
         match *j {
-            Json::Null          => self.null()?,
-            Json::Bool(x)       => self.bool(x)?,
-            Json::Number(x)     => self.i128(x)?,
+            Json::Null => self.null()?,
+            Json::Bool(x) => self.bool(x)?,
+            Json::I128(x) => self.i128(x)?,
+            Json::U128(x) => self.u128(x)?,
             Json::String(ref x) => self.string(x.as_ref())?,
             Json::Array(ref xs) => {
                 self.array()?;
@@ -198,6 +203,7 @@ impl<W: Write> Encoder<W> {
     number!(isize, isize);
 
     number!(i128, i128);
+    number!(u128, u128);
 
     pub fn bool(&mut self, x: bool) -> EncodeResult<()> {
         self.comma_array()?;
@@ -213,8 +219,8 @@ impl<W: Write> Encoder<W> {
 
     pub fn optional<T: ToJson>(&mut self, val: Option<T>) -> EncodeResult<()> {
         match val {
-            None        => self.null(),
-            Some(ref v) => self.to_json(v)
+            None => self.null(),
+            Some(ref v) => self.to_json(v),
         }
     }
 
@@ -258,33 +264,31 @@ impl<W: Write> Encoder<W> {
     /// End a JSON array or object.
     pub fn end(&mut self) -> EncodeResult<()> {
         match self.stack.pop() {
-            Some(Scope::A(_)) =>
-                self.writer.write_all(b"]").map_err(From::from),
-            Some(Scope::O(_)) =>
-                self.writer.write_all(b"}").map_err(From::from),
-            None => Ok(())
+            Some(Scope::A(_)) => self.writer.write_all(b"]").map_err(From::from),
+            Some(Scope::O(_)) => self.writer.write_all(b"}").map_err(From::from),
+            None => Ok(()),
         }
     }
 
     fn comma_array(&mut self) -> EncodeResult<()> {
         match self.stack.top() {
-            Some(Scope::A(true))  => self.writer.write_all(b",").map_err(From::from),
+            Some(Scope::A(true)) => self.writer.write_all(b",").map_err(From::from),
             Some(Scope::A(false)) => {
                 self.stack.set();
                 Ok(())
             }
-            _ => Ok(())
+            _ => Ok(()),
         }
     }
 
     fn comma_object(&mut self) -> EncodeResult<()> {
         match self.stack.top() {
-            Some(Scope::O(true))  => self.writer.write_all(b",").map_err(From::from),
+            Some(Scope::O(true)) => self.writer.write_all(b",").map_err(From::from),
             Some(Scope::O(false)) => {
                 self.stack.set();
                 Ok(())
             }
-            _ => Ok(())
+            _ => Ok(()),
         }
     }
 }
@@ -301,16 +305,16 @@ pub enum EncodeError {
     /// Generic error message.
     Message(&'static str),
     /// Some other error trait impl.
-    Other(Box<Error + Send + Sync>)
+    Other(Box<dyn Error + Send + Sync>),
 }
 
 impl fmt::Display for EncodeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
-            EncodeError::Io(ref e)    => write!(f, "i/o: {:?}", e),
+            EncodeError::Io(ref e) => write!(f, "i/o: {:?}", e),
             EncodeError::InvalidFloat => write!(f, "invalid f64 (NaN | Infinity)"),
-            EncodeError::Message(m)   => write!(f, "error: {}", m),
-            EncodeError::Other(ref e) => write!(f, "other: {}", e)
+            EncodeError::Message(m) => write!(f, "error: {}", m),
+            EncodeError::Other(ref e) => write!(f, "other: {}", e),
         }
     }
 }
@@ -318,18 +322,18 @@ impl fmt::Display for EncodeError {
 impl Error for EncodeError {
     fn description(&self) -> &str {
         match *self {
-            EncodeError::Io(_)        => "i/o error",
+            EncodeError::Io(_) => "i/o error",
             EncodeError::InvalidFloat => "invalid float value (e.g. NAN or INFINITY)",
-            EncodeError::Message(_)   => "generic error message",
-            EncodeError::Other(_)     => "other error"
+            EncodeError::Message(_) => "generic error message",
+            EncodeError::Other(_) => "other error",
         }
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         match *self {
-            EncodeError::Io(ref e)    => Some(e),
+            EncodeError::Io(ref e) => Some(e),
             EncodeError::Other(ref e) => Some(&**e),
-            _                         => None
+            _ => None,
         }
     }
 }
@@ -345,7 +349,7 @@ impl From<io::Error> for EncodeError {
 struct EscapedChars<'r> {
     source: Chars<'r>,
     buffer: [u8; 5],
-    index:  Option<(usize, usize)>
+    index: Option<(usize, usize)>,
 }
 
 impl<'r> EscapedChars<'r> {
@@ -353,15 +357,15 @@ impl<'r> EscapedChars<'r> {
         EscapedChars {
             source: s.chars(),
             buffer: [0; 5],
-            index:  None
+            index: None,
         }
     }
 
     fn chr(x: u8) -> u8 {
         match x {
-            0x0 ... 0x9 => b'0' + x,
-            0xA ... 0xF => b'A' + x - 0xA,
-            _           => panic!("{} > 0xF", x)
+            0x0..=0x9 => b'0' + x,
+            0xA..=0xF => b'A' + x - 0xA,
+            _ => panic!("{} > 0xF", x),
         }
     }
 }
@@ -371,17 +375,18 @@ impl<'r> Iterator for EscapedChars<'r> {
 
     fn next(&mut self) -> Option<char> {
         match self.index {
-            None         => (),
-            Some((i, e)) =>
+            None => (),
+            Some((i, e)) => {
                 if i < e {
                     self.index = Some((i + 1, e));
-                    return Some(self.buffer[i] as char)
+                    return Some(self.buffer[i] as char);
                 } else {
                     self.index = None
                 }
+            }
         }
         match self.source.next() {
-            Some(x@'\\') | Some(x@'"') => {
+            Some(x @ '\\') | Some(x @ '"') => {
                 self.buffer[0] = x as u8;
                 self.index = Some((0, 1));
                 Some('\\')
@@ -401,7 +406,7 @@ impl<'r> Iterator for EscapedChars<'r> {
                 self.index = Some((0, 1));
                 Some('\\')
             }
-            Some(x@'\x00' ... '\x1F') | Some(x@'\x7F') => {
+            Some(x @ '\x00'..='\x1F') | Some(x @ '\x7F') => {
                 self.buffer[0] = b'u';
                 self.buffer[1] = b'0';
                 self.buffer[2] = b'0';
@@ -410,7 +415,7 @@ impl<'r> Iterator for EscapedChars<'r> {
                 self.index = Some((0, 5));
                 Some('\\')
             }
-            x => x
+            x => x,
         }
     }
 }
@@ -419,7 +424,7 @@ struct Bytes<I> {
     src: I,
     buf: [u8; 4],
     pos: usize,
-    end: usize
+    end: usize,
 }
 
 impl<I> Bytes<I> {
@@ -428,12 +433,12 @@ impl<I> Bytes<I> {
             src: i,
             buf: [0; 4],
             pos: 0,
-            end: 0
+            end: 0,
         }
     }
 }
 
-impl<I: Iterator<Item=char>> Iterator for Bytes<I> {
+impl<I: Iterator<Item = char>> Iterator for Bytes<I> {
     type Item = u8;
 
     fn next(&mut self) -> Option<u8> {
@@ -444,7 +449,7 @@ impl<I: Iterator<Item=char>> Iterator for Bytes<I> {
                     debug_assert!(self.end > 0);
                     self.pos = 0
                 }
-                None => return None
+                None => return None,
             }
         }
         let x = self.buf[self.pos];
@@ -452,4 +457,3 @@ impl<I: Iterator<Item=char>> Iterator for Bytes<I> {
         Some(x)
     }
 }
-

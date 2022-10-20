@@ -20,7 +20,7 @@
 //! let     v = d.decode().unwrap();
 //! let     r = Ref::new(&v);
 //! assert_eq!(true, r.get("field1").bool().unwrap());
-//! assert_eq!(73f64, r.get("field2").get("nested").at(1).number().unwrap());
+//! assert_eq!(73f64, r.get("field2").get("nested").at(1).i128().unwrap());
 //!
 //! ```
 //! # Example 2: Direct decoding using macros
@@ -100,8 +100,8 @@ use std::fmt;
 use std::io::Read;
 use std::marker::PhantomData;
 use std::str;
-use std::{i8, i16, i32, i64, isize};
-use std::{u8, u16, u32, u64, usize};
+use std::{i16, i32, i64, i8, isize};
+use std::{u16, u32, u64, u8, usize};
 
 use ast::Json;
 use buffer::{Buffer, Utf8Buffer};
@@ -112,18 +112,19 @@ pub use utf8::ReadError;
 // FromJson trait ///////////////////////////////////////////////////////////
 
 pub trait FromJson {
-    fn decode<I: Iterator<Item=char>>(d: &mut Decoder<I>) -> DecodeResult<Self>
-        where Self: Sized;
+    fn decode<I: Iterator<Item = char>>(d: &mut Decoder<I>) -> DecodeResult<Self>
+    where
+        Self: Sized;
 }
 
 macro_rules! instance {
     ($name: ident) => {
         impl FromJson for $name {
-            fn decode<I: Iterator<Item=char>>(d: &mut Decoder<I>) -> DecodeResult<Self> {
+            fn decode<I: Iterator<Item = char>>(d: &mut Decoder<I>) -> DecodeResult<Self> {
                 d.$name()
             }
         }
-    }
+    };
 }
 
 instance!(bool);
@@ -140,31 +141,31 @@ instance!(isize);
 instance!(i128);
 
 impl FromJson for String {
-    fn decode<I: Iterator<Item=char>>(d: &mut Decoder<I>) -> DecodeResult<Self> {
+    fn decode<I: Iterator<Item = char>>(d: &mut Decoder<I>) -> DecodeResult<Self> {
         d.string()
     }
 }
 
 impl FromJson for Json {
-    fn decode<I: Iterator<Item=char>>(d: &mut Decoder<I>) -> DecodeResult<Self> {
+    fn decode<I: Iterator<Item = char>>(d: &mut Decoder<I>) -> DecodeResult<Self> {
         d.decode()
     }
 }
 
 impl<T: FromJson> FromJson for Option<T> {
-    fn decode<I: Iterator<Item=char>>(d: &mut Decoder<I>) -> DecodeResult<Self> {
+    fn decode<I: Iterator<Item = char>>(d: &mut Decoder<I>) -> DecodeResult<Self> {
         d.optional(FromJson::decode)
     }
 }
 
 impl<'a, T: FromJson + Clone> FromJson for Cow<'a, T> {
-    fn decode<I: Iterator<Item=char>>(d: &mut Decoder<I>) -> DecodeResult<Self> {
+    fn decode<I: Iterator<Item = char>>(d: &mut Decoder<I>) -> DecodeResult<Self> {
         Ok(Cow::Owned(FromJson::decode(d)?))
     }
 }
 
 impl<T: FromJson> FromJson for Vec<T> {
-    fn decode<I: Iterator<Item=char>>(d: &mut Decoder<I>) -> DecodeResult<Self> {
+    fn decode<I: Iterator<Item = char>>(d: &mut Decoder<I>) -> DecodeResult<Self> {
         d.array()?;
         let mut v = Vec::new();
         while d.has_more()? {
@@ -179,17 +180,17 @@ impl<T: FromJson> FromJson for Vec<T> {
 
 /// JSON decoder over `char` iterators.
 pub struct Decoder<I: Iterator> {
-    chars:  Source<I>,
+    chars: Source<I>,
     config: Config,
     buffer: [u8; 512],
-    stack:  Stack
+    stack: Stack,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// Decoder configuration.
 pub struct Config {
     /// Maximum recursion steps when decoding generic `Json`
-    pub max_nesting: usize
+    pub max_nesting: usize,
 }
 
 const DEFAULT_CONFIG: Config = Config { max_nesting: 16 };
@@ -197,7 +198,9 @@ const DEFAULT_CONFIG: Config = Config { max_nesting: 16 };
 impl Config {
     /// Create default configuration with
     /// - `max_nesting` = 16
-    pub fn default() -> Config { DEFAULT_CONFIG }
+    pub fn default() -> Config {
+        DEFAULT_CONFIG
+    }
 }
 
 // Macros ///////////////////////////////////////////////////////////////////
@@ -206,31 +209,30 @@ macro_rules! require {
     ($e: expr) => {
         match $e {
             Some(c) => c,
-            None    => return Err(DecodeError::EndOfInput)
+            None => return Err(DecodeError::EndOfInput),
         }
-    }
+    };
 }
 
 macro_rules! integral {
     ($name: ident, $ty: ty, false) => {
         pub fn $name(&mut self) -> DecodeResult<$ty> {
             self.skip_whitespace();
-            let digit =
-                require!(self.chars.next())
-                    .to_digit(10)
-                    .ok_or(DecodeError::Expected("digit"))?;
+            let digit = require!(self.chars.next())
+                .to_digit(10)
+                .ok_or(DecodeError::Expected("digit"))?;
             let mut dec = digit as $ty;
             while let Some(c) = self.chars.next() {
                 match c.to_digit(10) {
                     Some(n) => {
                         if dec > ($name::MAX - n as $ty) / 10 {
-                            return Err(DecodeError::IntOverflow)
+                            return Err(DecodeError::IntOverflow);
                         }
                         dec = dec * 10 + n as $ty;
                     }
                     None => {
                         self.chars.put_back(c);
-                        break
+                        break;
                     }
                 }
             }
@@ -240,45 +242,43 @@ macro_rules! integral {
     ($name: ident, $ty: ty, true) => {
         pub fn $name(&mut self) -> DecodeResult<$ty> {
             self.skip_whitespace();
-            let is_neg =
-                match self.chars.peek() {
-                    Some('-') => {
-                        self.chars.next();
-                        true
-                    }
-                    _ => false
-                };
-            let digit =
-                require!(self.chars.next())
-                    .to_digit(10)
-                    .ok_or(DecodeError::Expected("digit"))?;
+            let is_neg = match self.chars.peek() {
+                Some('-') => {
+                    self.chars.next();
+                    true
+                }
+                _ => false,
+            };
+            let digit = require!(self.chars.next())
+                .to_digit(10)
+                .ok_or(DecodeError::Expected("digit"))?;
             let mut dec = -(digit as $ty);
             while let Some(c) = self.chars.next() {
                 match c.to_digit(10) {
                     Some(n) => {
                         if dec < ($name::MIN + n as $ty) / 10 {
-                            return Err(DecodeError::IntOverflow)
+                            return Err(DecodeError::IntOverflow);
                         }
                         dec = dec * 10 - n as $ty;
                     }
                     None => {
                         self.chars.put_back(c);
-                        break
+                        break;
                     }
                 }
             }
-            Ok(if is_neg {dec} else {-dec})
+            Ok(if is_neg { dec } else { -dec })
         }
-    }
+    };
 }
 
-impl<I: Iterator<Item=char>> Decoder<I> {
+impl<I: Iterator<Item = char>> Decoder<I> {
     pub fn new(c: Config, i: I) -> Decoder<I> {
         Decoder {
-            chars:  Source::new(i),
+            chars: Source::new(i),
             config: c,
             buffer: [0; 512],
-            stack:  Stack::new()
+            stack: Stack::new(),
         }
     }
 
@@ -314,14 +314,14 @@ impl<I: Iterator<Item=char>> Decoder<I> {
 
     fn decode_json(&mut self, level: usize) -> DecodeResult<Json> {
         if level == 0 {
-            return Err(DecodeError::MaxRecursion)
+            return Err(DecodeError::MaxRecursion);
         }
         self.skip_whitespace();
         match require!(self.chars.peek()) {
-            '"'               => self.string().map(Json::String),
-            't' | 'f'         => self.bool().map(Json::Bool),
-            'n'               => self.null().map(|_| Json::Null),
-            '0' ... '9' | '-' => self.i128().map(Json::Number),
+            '"' => self.string().map(Json::String),
+            't' | 'f' => self.bool().map(Json::Bool),
+            'n' => self.null().map(|_| Json::Null),
+            '0'..='9' | '-' => self.i128().map(Json::I128),
             '[' => {
                 self.array()?;
                 let mut v = Vec::new();
@@ -341,7 +341,7 @@ impl<I: Iterator<Item=char>> Decoder<I> {
                 }
                 Ok(Json::Object(m))
             }
-            chr => return Err(DecodeError::Unexpected(chr))
+            chr => return Err(DecodeError::Unexpected(chr)),
         }
     }
 
@@ -351,7 +351,7 @@ impl<I: Iterator<Item=char>> Decoder<I> {
     /// but potentially more efficient as it tries to avoid allocating
     /// intermediate values.
     pub fn skip(&mut self) -> DecodeResult<()> {
-        let     n = self.config.max_nesting;
+        let n = self.config.max_nesting;
         let mut b = [0; 0];
         let mut u = Utf8Buffer::new(&mut b);
         self.skip_json(&mut u, n)
@@ -359,14 +359,14 @@ impl<I: Iterator<Item=char>> Decoder<I> {
 
     fn skip_json(&mut self, b: &mut Utf8Buffer, level: usize) -> DecodeResult<()> {
         if level == 0 {
-            return Err(DecodeError::MaxRecursion)
+            return Err(DecodeError::MaxRecursion);
         }
         self.skip_whitespace();
         match require!(self.chars.peek()) {
-            '"'               => self.str(b, false).map(|_| ()),
-            't' | 'f'         => self.bool().map(|_| ()),
-            'n'               => self.null().map(|_| ()),
-            '0' ... '9' | '-' => self.i128().map(|_| ()),
+            '"' => self.str(b, false).map(|_| ()),
+            't' | 'f' => self.bool().map(|_| ()),
+            'n' => self.null().map(|_| ()),
+            '0'..='9' | '-' => self.i128().map(|_| ()),
             '[' => {
                 self.array()?;
                 while self.has_more()? {
@@ -382,57 +382,58 @@ impl<I: Iterator<Item=char>> Decoder<I> {
                 }
                 Ok(())
             }
-            chr => return Err(DecodeError::Unexpected(chr))
+            chr => return Err(DecodeError::Unexpected(chr)),
         }
     }
 
-    integral!(u8,    u8,    false);
-    integral!(u16,   u16,   false);
-    integral!(u32,   u32,   false);
-    integral!(u64,   u64,   false);
+    integral!(u8, u8, false);
+    integral!(u16, u16, false);
+    integral!(u32, u32, false);
+    integral!(u64, u64, false);
+    integral!(u128, u128, false);
     integral!(usize, usize, false);
 
-    integral!(i8,    i8,    true);
-    integral!(i16,   i16,   true);
-    integral!(i32,   i32,   true);
-    integral!(i64,   i64,   true);
+    integral!(i8, i8, true);
+    integral!(i16, i16, true);
+    integral!(i32, i32, true);
+    integral!(i64, i64, true);
+    integral!(i128, i128, true);
     integral!(isize, isize, true);
 
-    pub fn i128(&mut self) -> DecodeResult<i128> {
-        fn is_valid(x: char) -> bool {
-            match x {
-                '0'...'9'|'+'|'-' => true,
-                _                             => false
-            }
-        }
-        self.skip_whitespace();
-        let is_neg =
-            match self.chars.peek() {
-                Some('-') => {
-                    self.chars.next();
-                    true
-                }
-                _ => false
-            };
-        let d = require!(self.chars.next());
-        if !d.is_digit(10) {
-            return Err(DecodeError::Unexpected(d))
-        }
-        let mut buf = Utf8Buffer::new(&mut self.buffer);
-        buf.push(d);
-        while let Some(c) = self.chars.next() {
-            if is_valid(c) {
-                buf.push(c)
-            } else {
-                self.chars.put_back(c);
-                break
-            }
-        }
-        match buf.as_str().parse::<i128>() {
-            Err(_)                   => Err(DecodeError::Number),
-            Ok(n)                    => Ok(if is_neg {-n} else {n})
-        }
-    }
+    // pub fn i128(&mut self) -> DecodeResult<i128> {
+    //     fn is_valid(x: char) -> bool {
+    //         match x {
+    //             '0'..='9' | '+' | '-' => true,
+    //             _ => false,
+    //         }
+    //     }
+    //     self.skip_whitespace();
+    //     let is_neg = match self.chars.peek() {
+    //         Some('-') => {
+    //             self.chars.next();
+    //             true
+    //         }
+    //         _ => false,
+    //     };
+    //     let d = require!(self.chars.next());
+    //     if !d.is_digit(10) {
+    //         return Err(DecodeError::Unexpected(d));
+    //     }
+    //     let mut buf = Utf8Buffer::new(&mut self.buffer);
+    //     buf.push(d);
+    //     while let Some(c) = self.chars.next() {
+    //         if is_valid(c) {
+    //             buf.push(c)
+    //         } else {
+    //             self.chars.put_back(c);
+    //             break;
+    //         }
+    //     }
+    //     match buf.as_str().parse::<i128>() {
+    //         Err(_) => Err(DecodeError::Number),
+    //         Ok(n) => Ok(if is_neg { -n } else { n }),
+    //     }
+    // }
 
     pub fn null(&mut self) -> DecodeResult<()> {
         self.skip_whitespace();
@@ -468,47 +469,48 @@ impl<I: Iterator<Item=char>> Decoder<I> {
     fn string_into<B: Buffer>(&mut self, s: &mut B, overflow_err: bool) -> DecodeResult<()> {
         self.skip_whitespace();
         if self.chars.next() != Some('"') {
-            return Err(DecodeError::Expected("\""))
+            return Err(DecodeError::Expected("\""));
         }
         let mut escaped = false;
         loop {
             match require!(self.chars.next()) {
                 chr if escaped => {
                     match chr {
-                        '"'  => s.push('"'),
-                        '/'  => s.push('/'),
+                        '"' => s.push('"'),
+                        '/' => s.push('/'),
                         '\\' => s.push('\\'),
-                        'b'  => s.push('\x08'),
-                        'f'  => s.push('\x0C'),
-                        'n'  => s.push('\n'),
-                        'r'  => s.push('\r'),
-                        't'  => s.push('\t'),
-                        'u'  => match self.hex_unicode()? {
-                            hi @ 0xD800 ... 0xDBFF => {
+                        'b' => s.push('\x08'),
+                        'f' => s.push('\x0C'),
+                        'n' => s.push('\n'),
+                        'r' => s.push('\r'),
+                        't' => s.push('\t'),
+                        'u' => match self.hex_unicode()? {
+                            hi @ 0xD800..=0xDBFF => {
                                 self.matches("\\u")?;
                                 let lo = self.hex_unicode()?;
                                 if lo < 0xDC00 || lo > 0xDFFF {
-                                    return Err(DecodeError::UnicodeEscape)
+                                    return Err(DecodeError::UnicodeEscape);
                                 }
-                                let c = (((hi - 0xD800) as u32) << 10 | (lo - 0xDC00) as u32) + 0x10000;
+                                let c =
+                                    (((hi - 0xD800) as u32) << 10 | (lo - 0xDC00) as u32) + 0x10000;
                                 s.push(char::from_u32(c).unwrap())
                             }
-                            0xDC00 ... 0xDFFF => return Err(DecodeError::UnicodeEscape),
+                            0xDC00..=0xDFFF => return Err(DecodeError::UnicodeEscape),
                             x => match char::from_u32(x as u32) {
                                 Some(c) => s.push(c),
-                                None    => return Err(DecodeError::UnicodeEscape)
-                            }
+                                None => return Err(DecodeError::UnicodeEscape),
+                            },
                         },
-                        c => return Err(DecodeError::Unexpected(c))
+                        c => return Err(DecodeError::Unexpected(c)),
                     }
                     escaped = false
                 }
                 '\\' => escaped = true,
-                '"'  => break,
-                chr  => s.push(chr)
+                '"' => break,
+                chr => s.push(chr),
             }
             if overflow_err && s.is_full() {
-                return Err(DecodeError::BufferOverflow)
+                return Err(DecodeError::BufferOverflow);
             }
         }
         Ok(())
@@ -517,12 +519,13 @@ impl<I: Iterator<Item=char>> Decoder<I> {
     /// Decode `null` (which is mapped to `None`) or some other
     /// JSON value (mapped to `Some`).
     pub fn optional<A, F>(&mut self, mut f: F) -> DecodeResult<Option<A>>
-        where F: FnMut(&mut Decoder<I>) -> DecodeResult<A>
+    where
+        F: FnMut(&mut Decoder<I>) -> DecodeResult<A>,
     {
         self.skip_whitespace();
         match require!(self.chars.peek()) {
             'n' => self.null().map(|_| None),
-             _  => f(self).map(Some)
+            _ => f(self).map(Some),
         }
     }
 
@@ -555,7 +558,7 @@ impl<I: Iterator<Item=char>> Decoder<I> {
                     self.stack.set();
                     Ok(true)
                 }
-                None => Err(DecodeError::EndOfInput)
+                None => Err(DecodeError::EndOfInput),
             },
             Some(Scope::A(true)) => match self.chars.next() {
                 Some(',') => Ok(true),
@@ -563,7 +566,7 @@ impl<I: Iterator<Item=char>> Decoder<I> {
                     self.stack.pop();
                     Ok(false)
                 }
-                _ => Err(DecodeError::Expected("',' or ']'"))
+                _ => Err(DecodeError::Expected("',' or ']'")),
             },
             Some(Scope::O(false)) => match self.chars.peek() {
                 Some('}') => {
@@ -575,7 +578,7 @@ impl<I: Iterator<Item=char>> Decoder<I> {
                     self.stack.set();
                     Ok(true)
                 }
-                None => Err(DecodeError::EndOfInput)
+                None => Err(DecodeError::EndOfInput),
             },
             Some(Scope::O(true)) => match self.chars.next() {
                 Some(',') => Ok(true),
@@ -583,9 +586,9 @@ impl<I: Iterator<Item=char>> Decoder<I> {
                     self.stack.pop();
                     Ok(false)
                 }
-                _ => Err(DecodeError::Expected("',' or '}'"))
+                _ => Err(DecodeError::Expected("',' or '}'")),
             },
-            None => Ok(false)
+            None => Ok(false),
         }
     }
 
@@ -644,7 +647,7 @@ impl<I: Iterator<Item=char>> Decoder<I> {
         self.string_into(s, overflow_err)?;
         self.skip_whitespace();
         if self.chars.next() != Some(':') {
-            return Err(DecodeError::Expected(":"))
+            return Err(DecodeError::Expected(":"));
         }
         Ok(())
     }
@@ -653,7 +656,7 @@ impl<I: Iterator<Item=char>> Decoder<I> {
         while let Some(c) = self.chars.next() {
             if !c.is_whitespace() {
                 self.chars.put_back(c);
-                break
+                break;
             }
         }
     }
@@ -670,7 +673,7 @@ impl<I: Iterator<Item=char>> Decoder<I> {
         for a in pattern.chars() {
             let b = require!(self.chars.next());
             if a != b {
-                return Err(DecodeError::Unexpected(b))
+                return Err(DecodeError::Unexpected(b));
             }
         }
         Ok(())
@@ -679,23 +682,23 @@ impl<I: Iterator<Item=char>> Decoder<I> {
 
 fn hex_byte(digit: char) -> DecodeResult<u8> {
     match digit {
-        '0'       => Ok(0),
-        '1'       => Ok(1),
-        '2'       => Ok(2),
-        '3'       => Ok(3),
-        '4'       => Ok(4),
-        '5'       => Ok(5),
-        '6'       => Ok(6),
-        '7'       => Ok(7),
-        '8'       => Ok(8),
-        '9'       => Ok(9),
+        '0' => Ok(0),
+        '1' => Ok(1),
+        '2' => Ok(2),
+        '3' => Ok(3),
+        '4' => Ok(4),
+        '5' => Ok(5),
+        '6' => Ok(6),
+        '7' => Ok(7),
+        '8' => Ok(8),
+        '9' => Ok(9),
         'A' | 'a' => Ok(10),
         'B' | 'b' => Ok(11),
         'C' | 'c' => Ok(12),
         'D' | 'd' => Ok(13),
         'E' | 'e' => Ok(14),
         'F' | 'f' => Ok(15),
-        chr       => Err(DecodeError::Unexpected(chr))
+        chr => Err(DecodeError::Unexpected(chr)),
     }
 }
 
@@ -727,22 +730,22 @@ pub enum DecodeError {
     /// Generic error message.
     Message(&'static str),
     /// Some other `Error` trait impl.
-    Other(Box<Error + Send + Sync>)
+    Other(Box<dyn Error + Send + Sync>),
 }
 
 impl fmt::Display for DecodeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
-            DecodeError::EndOfInput     => write!(f, "end of input"),
-            DecodeError::Expected(e)    => write!(f, "expected \"{}\"", e),
-            DecodeError::MaxRecursion   => write!(f, "max. number of recursions reached"),
-            DecodeError::IntOverflow    => write!(f, "integer overflow"),
-            DecodeError::Unexpected(c)  => write!(f, "unexpected \"{}\"", c),
-            DecodeError::UnicodeEscape  => write!(f, "invalid unicode escape"),
-            DecodeError::Number         => write!(f, "failed to parse number"),
+            DecodeError::EndOfInput => write!(f, "end of input"),
+            DecodeError::Expected(e) => write!(f, "expected \"{}\"", e),
+            DecodeError::MaxRecursion => write!(f, "max. number of recursions reached"),
+            DecodeError::IntOverflow => write!(f, "integer overflow"),
+            DecodeError::Unexpected(c) => write!(f, "unexpected \"{}\"", c),
+            DecodeError::UnicodeEscape => write!(f, "invalid unicode escape"),
+            DecodeError::Number => write!(f, "failed to parse number"),
             DecodeError::BufferOverflow => write!(f, "buffer overflow"),
-            DecodeError::Message(m)     => write!(f, "error: {}", m),
-            DecodeError::Other(ref e)   => write!(f, "other: {}", e)
+            DecodeError::Message(m) => write!(f, "error: {}", m),
+            DecodeError::Other(ref e) => write!(f, "other: {}", e),
         }
     }
 }
@@ -750,23 +753,23 @@ impl fmt::Display for DecodeError {
 impl Error for DecodeError {
     fn description(&self) -> &str {
         match *self {
-            DecodeError::EndOfInput     => "end of input",
-            DecodeError::Expected(_)    => "expected some string",
-            DecodeError::MaxRecursion   => "objects/arrays are too deeply nested",
-            DecodeError::IntOverflow    => "integer overflow",
-            DecodeError::Unexpected(_)  => "unexpected char",
-            DecodeError::UnicodeEscape  => "invalid unicode escape sequence",
-            DecodeError::Number         => "failed to decode number",
+            DecodeError::EndOfInput => "end of input",
+            DecodeError::Expected(_) => "expected some string",
+            DecodeError::MaxRecursion => "objects/arrays are too deeply nested",
+            DecodeError::IntOverflow => "integer overflow",
+            DecodeError::Unexpected(_) => "unexpected char",
+            DecodeError::UnicodeEscape => "invalid unicode escape sequence",
+            DecodeError::Number => "failed to decode number",
             DecodeError::BufferOverflow => "buffer too small to hold value",
-            DecodeError::Message(_)     => "generic error message",
-            DecodeError::Other(_)       => "other error"
+            DecodeError::Message(_) => "generic error message",
+            DecodeError::Other(_) => "other error",
         }
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         match *self {
             DecodeError::Other(ref e) => Some(&**e),
-            _                         => None
+            _ => None,
         }
     }
 }
@@ -774,21 +777,30 @@ impl Error for DecodeError {
 // Source ///////////////////////////////////////////////////////////////////
 
 struct Source<I: Iterator> {
-    iter:  I,
-    front: Option<I::Item>
+    iter: I,
+    front: Option<I::Item>,
 }
 
 impl<I: Iterator> Source<I> {
     fn new(i: I) -> Source<I> {
-        Source { iter: i, front: None }
+        Source {
+            iter: i,
+            front: None,
+        }
     }
 
     fn put_back(&mut self, i: I::Item) {
         self.front = Some(i)
     }
 
-    fn peek(&mut self) -> Option<I::Item> where I::Item: Copy {
-        self.next().map(|c| { self.put_back(c); c })
+    fn peek(&mut self) -> Option<I::Item>
+    where
+        I::Item: Copy,
+    {
+        self.next().map(|c| {
+            self.put_back(c);
+            c
+        })
     }
 
     fn into_iter(self) -> I {
@@ -813,31 +825,38 @@ impl<I: Iterator> Iterator for Source<I> {
 /// Iterator over JSON array elements.
 ///
 /// Used in conjunction with homogenous JSON arrays.
-pub struct ArrayIter<'r, A, I> where I: Iterator<Item=char> + 'r {
+pub struct ArrayIter<'r, A, I>
+where
+    I: Iterator<Item = char> + 'r,
+{
     dec: &'r mut Decoder<I>,
-    _ty: PhantomData<A>
+    _ty: PhantomData<A>,
 }
 
-impl<'r, A, I> ArrayIter<'r, A, I> where I: Iterator<Item=char> + 'r {
+impl<'r, A, I> ArrayIter<'r, A, I>
+where
+    I: Iterator<Item = char> + 'r,
+{
     fn new(d: &'r mut Decoder<I>) -> ArrayIter<'r, A, I> {
         ArrayIter {
             dec: d,
-            _ty: PhantomData
+            _ty: PhantomData,
         }
     }
 }
 
 impl<'r, A, I> Iterator for ArrayIter<'r, A, I>
-    where I: Iterator<Item=char> + 'r,
-          A: FromJson
+where
+    I: Iterator<Item = char> + 'r,
+    A: FromJson,
 {
     type Item = DecodeResult<A>;
 
     fn next(&mut self) -> Option<DecodeResult<A>> {
         match self.dec.has_more() {
-            Ok(true)  => Some(self.dec.from_json()),
+            Ok(true) => Some(self.dec.from_json()),
             Ok(false) => None,
-            Err(e)    => Some(Err(e))
+            Err(e) => Some(Err(e)),
         }
     }
 }
@@ -850,15 +869,15 @@ impl<'r, A, I> Iterator for ArrayIter<'r, A, I>
 /// expect iterators over plain `char`s this iterator yields `None`
 /// whenever the underlying `Chars` iterator returned an error.
 pub struct ReadIter<R: Read> {
-    iter:  utf8::Chars<R>,
-    error: Option<ReadError>
+    iter: utf8::Chars<R>,
+    error: Option<ReadError>,
 }
 
 impl<R: Read> ReadIter<R> {
     pub fn new(r: R) -> ReadIter<R> {
         ReadIter {
-            iter:  utf8::Chars::new(r),
-            error: None
+            iter: utf8::Chars::new(r),
+            error: None,
         }
     }
 
@@ -878,12 +897,12 @@ impl<R: Read> Iterator for ReadIter<R> {
 
     fn next(&mut self) -> Option<char> {
         match self.iter.next() {
-            Some(Ok(c))  => Some(c),
+            Some(Ok(c)) => Some(c),
             Some(Err(e)) => {
                 self.error = Some(e);
                 None
             }
-            None => None
+            None => None,
         }
     }
 }
@@ -967,7 +986,8 @@ mod tests {
 
     #[test]
     fn numbers() {
-        let mut d = Decoder::default("1 0 -1 18446744073709551615 -9223372036854775808 255 256".chars());
+        let mut d =
+            Decoder::default("1 0 -1 18446744073709551615 -9223372036854775808 255 256".chars());
         assert_eq!(1, d.u8().unwrap());
         assert_eq!(0, d.u8().unwrap());
         assert_eq!(-1, d.i8().unwrap());
@@ -976,7 +996,7 @@ mod tests {
         assert_eq!(255, d.u8().unwrap());
         match d.u8() {
             Err(DecodeError::IntOverflow) => (),
-            other => panic!("unexpected result: {:?}", other)
+            other => panic!("unexpected result: {:?}", other),
         }
     }
 

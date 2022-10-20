@@ -6,7 +6,7 @@
 #[derive(Debug, Copy, Clone)]
 pub enum Scope {
     A(bool), // Array
-    O(bool)  // Object
+    O(bool), // Object
 }
 
 #[derive(Debug, Clone)]
@@ -30,13 +30,9 @@ impl Stack {
     }
 
     pub fn set(&mut self) {
-        self.0.last_mut().map(|x| {
-            match *x {
-                Scope::A(_) => *x = Scope::A(true),
-                Scope::O(_) => *x = Scope::O(true)
-            }
+        self.0.last_mut().map(|x| match *x {
+            Scope::A(_) => *x = Scope::A(true),
+            Scope::O(_) => *x = Scope::O(true),
         });
     }
 }
-
-

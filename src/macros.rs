@@ -141,15 +141,15 @@ macro_rules! to_field {
     ($msg: expr, $e: expr, opt) => {
         match $e {
             Some(e) => e,
-            None    => None
+            None => None,
         }
     };
     ($msg: expr, $e: expr, req) => {
         match $e {
             Some(e) => e,
-            None    => return Err($crate::DecodeError::Expected($msg))
+            None => return Err($crate::DecodeError::Expected($msg)),
         }
-    }
+    };
 }
 
 #[macro_export]
@@ -166,6 +166,5 @@ macro_rules! array {
             }
             Ok(v)
         })
-    }}
+    }};
 }
-

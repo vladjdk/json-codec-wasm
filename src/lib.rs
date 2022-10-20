@@ -4,14 +4,14 @@
 #[macro_use]
 pub mod macros;
 
-mod buffer;
-mod stack;
-mod utf8;
 pub mod ast;
+mod buffer;
 pub mod decoder;
 pub mod encoder;
+mod stack;
+mod utf8;
 
 pub use ast::Json;
 pub use buffer::Utf8Buffer;
-pub use decoder::{FromJson, Decoder, DecodeError, DecodeResult, Config};
-pub use encoder::{ToJson, Encoder, EncodeError, EncodeResult};
+pub use decoder::{Config, DecodeError, DecodeResult, Decoder, FromJson};
+pub use encoder::{EncodeError, EncodeResult, Encoder, ToJson};

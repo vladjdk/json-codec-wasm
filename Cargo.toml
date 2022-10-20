@@ -14,5 +14,5 @@ categories    = ["encoding"]
 name = "json"
 
 [dev-dependencies]
-quickcheck = ">= 0.2.21"
+quickcheck = "0.2.21"
 
