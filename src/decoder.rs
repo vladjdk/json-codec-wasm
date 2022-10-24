@@ -20,7 +20,7 @@
 //! let     v = d.decode().unwrap();
 //! let     r = Ref::new(&v);
 //! assert_eq!(true, r.get("field1").bool().unwrap());
-//! assert_eq!(73f64, r.get("field2").get("nested").at(1).i128().unwrap());
+//! assert_eq!(73i128, r.get("field2").get("nested").at(1).i128().unwrap());
 //!
 //! ```
 //! # Example 2: Direct decoding using macros
@@ -55,7 +55,7 @@
 //!     thumbnail: Thumbnail,
 //!     animated:  bool,
 //!     ids:       Vec<u32>,
-//!     geo:       Option<(f64, f64)>
+//!     geo:       Option<(i128, i128)>
 //! }
 //!
 //! struct Thumbnail {
@@ -82,8 +82,8 @@
 //!         animated:  req. "Animated" => d.bool(),
 //!         ids:       req. "IDs"      => array!(d, d.u32()),
 //!         geo:       opt. "Geo"      => d.optional(|d| {
-//!             let lat = d.f64()?;
-//!             let lon = d.f64()?;
+//!             let lat = d.i128()?;
+//!             let lon = d.i128()?;
 //!             Ok((lat, lon))
 //!         })
 //!     }
