@@ -1,17 +1,17 @@
 [package]
-name          = "json-codec"
+name          = "json-codec-wasm"
 version       = "0.5.0"
-authors       = ["Toralf Wittner <tw@dtex.org>"]
+authors       = ["Toralf Wittner <tw@dtex.org>", "Vladislav Jidkov <vladjdk@gmail.com>"]
 license-file  = "LICENSE"
 readme        = "README.md"
 description   = "JSON Codec implementation"
-repository    = "https://gitlab.com/twittner/json-codec"
+repository    = "https://github.com/vladjdk/json-codec-wasm"
 documentation = "https://twittner.gitlab.io/json-codec/json/"
 keywords      = ["json", "encoding"]
 categories    = ["encoding"]
 
 [lib]
-name = "json"
+name = "json_codec_wasm"
 
 [dev-dependencies]
 quickcheck = "0.2.21"

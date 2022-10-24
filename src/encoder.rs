@@ -3,7 +3,7 @@
 //! # Usage example
 //!
 //! ```
-//! use json::Encoder;
+//! use json_codec_wasm::Encoder;
 //! use std::io::Cursor;
 //!
 //! let mut e = Encoder::new(Cursor::new(Vec::new()));

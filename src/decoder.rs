@@ -8,8 +8,8 @@
 //! # Example 1: Generic decoding
 //!
 //! ```
-//! use json::{Decoder, Json};
-//! use json::ast::Ref;
+//! use json_codec_wasm::{Decoder, Json};
+//! use json_codec_wasm::ast::Ref;
 //!
 //! let json = r#"
 //! { "field1": true,
@@ -27,10 +27,10 @@
 //!
 //! ```
 //! #
-//! #[macro_use] extern crate json;
+//! #[macro_use] extern crate json_codec_wasm;
 //! # fn main() {
 //!
-//! use json::Decoder;
+//! use json_codec_wasm::Decoder;
 //!
 //! const JSON: &'static str =
 //! r#"
@@ -534,7 +534,7 @@ impl<I: Iterator<Item = char>> Decoder<I> {
     /// reached. E.g.
     ///
     /// ```
-    /// use json::{Decoder, DecodeResult};
+    /// use json_codec_wasm::{Decoder, DecodeResult};
     ///
     /// fn foo<I: Iterator<Item=char>>(d: &mut Decoder<I>) -> DecodeResult<Vec<u8>> {
     ///     d.array()?;
@@ -606,7 +606,7 @@ impl<I: Iterator<Item = char>> Decoder<I> {
     /// Create a JSON array iterator to decode a homogenous array.
     ///
     /// ```
-    /// use json::Decoder;
+    /// use json_codec_wasm::Decoder;
     ///
     /// let mut d = Decoder::default("[1,2,3,4]".chars());
     /// let mut v: Vec<u8> = Vec::new();

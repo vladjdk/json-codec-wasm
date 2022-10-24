@@ -1,8 +1,8 @@
-extern crate json;
+extern crate json_codec_wasm;
 extern crate quickcheck;
 
-use json::decoder::ReadIter;
-use json::{Config, Decoder, EncodeResult, Encoder, Json};
+use json_codec_wasm::decoder::ReadIter;
+use json_codec_wasm::{Config, Decoder, EncodeResult, Encoder, Json};
 use quickcheck::{quickcheck, Arbitrary, Gen};
 use std::collections::HashMap;
 use std::io::Cursor;

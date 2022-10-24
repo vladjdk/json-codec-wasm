@@ -8,10 +8,10 @@
 ///
 /// ```
 /// #
-/// #[macro_use] extern crate json;
+/// #[macro_use] extern crate json_codec_wasm;
 /// # fn main() {
 ///
-/// use json::Decoder;
+/// use json_codec_wasm::Decoder;
 ///
 /// let mut d = Decoder::default(r#"{"x": 0, "y": 1}"#.chars());
 ///
@@ -68,10 +68,10 @@ macro_rules! extract {
 ///
 /// ```
 /// #
-/// #[macro_use] extern crate json;
+/// #[macro_use] extern crate json_codec_wasm;
 /// # fn main() {
 ///
-/// use json::Decoder;
+/// use json_codec_wasm::Decoder;
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct Point {
